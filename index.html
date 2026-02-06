@@ -172,7 +172,7 @@
  *  🔒 “나만 쓰기” 키 설정
  *  아래 문자열만 바꾸면 됨.
  *  ========================= */
-const OWNER_KEY = "OCTO-613"; // <- 여기만 당신 키로 변경하세요
+const OWNER_KEY = ""; // <- 여기만 당신 키로 변경하세요
 
 /** =========================
  *  64괘 이름(왕문/통행본)
@@ -388,7 +388,7 @@ const qEl = document.getElementById("question");
 let lastResult = null;
 
 function updateLock(){
-  const ok = keyEl.value === OWNER_KEY;
+  const ok = true;
   castBtn.disabled = !ok;
   copyBtn.disabled = !ok || !lastResult;
   document.getElementById("status").innerHTML =
@@ -477,3 +477,4 @@ updateLock();
 </script>
 </body>
 </html>
+
