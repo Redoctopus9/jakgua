@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>작괘 프로그램</title>
+  <title>적문의 역문까페 작괘머슴</title>
   <style>
     :root{
       --bg:#ffffff;
@@ -106,7 +106,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>작괘 프로그램 (흰 배경 · 검은 괘 · 변효 빨강)</h1>
+    <h1>적문의 역문까페 작괘머슴</h1>
 
     <div class="row">
       <div class="card">
@@ -378,7 +378,7 @@ function nowStr(){
 /** =========================
  *  UI Wiring
  *  ========================= */
-const keyEl = document.getElementById("key");
+
 const castBtn = document.getElementById("castBtn");
 const copyBtn = document.getElementById("copyBtn");
 const resetBtn = document.getElementById("resetBtn");
@@ -388,14 +388,12 @@ const qEl = document.getElementById("question");
 let lastResult = null;
 
 function updateLock(){
-  const ok = true;
-  castBtn.disabled = !ok;
-  copyBtn.disabled = !ok || !lastResult;
-  document.getElementById("status").innerHTML =
-    `상태: ${ok ? `<span class="ok">사용 가능</span>` : `<span class="bad">키 입력 필요</span>`}`;
+  castBtn.disabled = false;
+  copyBtn.disabled = !lastResult;
 }
 
-keyEl.addEventListener("input", updateLock);
+
+
 
 castBtn.addEventListener("click", ()=>{
   const mode = modeEl.value;
@@ -477,4 +475,5 @@ updateLock();
 </script>
 </body>
 </html>
+
 
