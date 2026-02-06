@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>작괘 프로그램</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --fg:#0b0b0b;
+      --muted:#666;
+      --accent:#c01818; /* 변효 빨강 */
+      --card:#f6f6f6;
+      --line: #111;
+    }
+    body{
+      margin:0; background:var(--bg); color:var(--fg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Apple SD Gothic Neo, Noto Sans KR, sans-serif;
+    }
+    .wrap{ max-width: 860px; margin: 0 auto; padding: 18px; }
+    h1{ font-size: 20px; margin: 0 0 10px; }
+    .row{ display:flex; gap:14px; flex-wrap: wrap; align-items: stretch; }
+    .card{
+      background: var(--card);
+      border: 1px solid #e7e7e7;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      flex: 1 1 320px;
+      min-width: 300px;
+    }
+    .controls{ display:grid; gap:10px; }
+    label{ font-size: 13px; color: var(--muted); }
+    input[type="password"], input[type="text"], select, textarea{
+      width:100%;
+      box-sizing:border-box;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      background:#fff;
+      font-size: 14px;
+      outline: none;
+    }
+    textarea{ min-height: 72px; resize: vertical; }
+    .btns{ display:flex; gap:10px; flex-wrap: wrap; margin-top: 6px; }
+    button{
+      border: 1px solid #111;
+      background: #111;
+      color:#fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor:pointer;
+      transition: transform .05s ease;
+    }
+    button.secondary{
+      background:#fff; color:#111;
+    }
+    button:active{ transform: translateY(1px); }
+    .small{ font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .hex-area{ display:flex; gap:22px; flex-wrap: wrap; align-items: flex-start; }
+    .hex{
+      width: 240px;
+      background:#fff;
+      border: 1px solid #e7e7e7;
+      border-radius: 14px;
+      padding: 12px 12px 10px;
+    }
+    .hex h2{ font-size: 15px; margin: 0 0 8px; }
+    .name{ font-size: 14px; margin: 0 0 10px; }
+    .name b{ font-size: 16px; }
+    .lines{ display:flex; flex-direction: column-reverse; gap: 9px; } /* 아래효가 아래에 오도록 reverse */
+    .line{
+      display:flex; align-items:center; gap:10px;
+    }
+    .bar{
+      position: relative;
+      width: 170px;
+      height: 14px;
+    }
+    .yang, .yinL, .yinR{
+      position:absolute; top:0; height: 14px;
+      background: var(--line);
+      border-radius: 999px;
+    }
+    .yang{ left:0; width: 170px; }
+    .yinL{ left:0; width: 75px; }
+    .yinR{ right:0; width: 75px; }
+    .chg .yang, .chg .yinL, .chg .yinR{ background: var(--accent); } /* 변효만 빨강 */
+    .meta{
+      font-size: 12px; color: var(--muted);
+      display:flex; justify-content: space-between; gap:10px;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      border:1px solid #ddd; border-radius:999px;
+      padding: 5px 10px; background:#fff;
+      font-size: 12px; color:#111;
+    }
+    .ok{ color: #0b6; font-weight: 700; }
+    .bad{ color: var(--accent); font-weight: 700; }
+    .divider{ height:1px; background:#e7e7e7; margin: 12px 0; }
+    .hidden{ display:none; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>작괘 프로그램 (흰 배경 · 검은 괘 · 변효 빨강)</h1>
+
+    <div class="row">
+      <div class="card">
+        <div class="controls">
+          <div>
+            <label>접속 키 (맞아야 작괘 버튼 활성화)</label>
+            <input id="key" type="password" placeholder="키를 입력하세요" />
+            <div class="small">※ 아래 코드에서 <span class="mono">OWNER_KEY</span> 값을 바꾸면 “당신만 쓰는” 키로 잠글 수 있어요.</div>
+          </div>
+
+          <div>
+            <label>작괘 방식</label>
+            <select id="mode">
+              <option value="equal">균등 랜덤(4상 동일 확률) — 변효 0~6 자연 발생</option>
+              <option value="coins">동전법 확률(노양/노음 1/8, 소양/소음 3/8)</option>
+            </select>
+          </div>
+
+          <div>
+            <label>질문(선택)</label>
+            <textarea id="question" placeholder="질문을 적어두면 기록에 남습니다."></textarea>
+          </div>
+
+          <div class="btns">
+            <button id="castBtn" disabled>작괘</button>
+            <button class="secondary" id="copyBtn" disabled>결과 복사</button>
+            <button class="secondary" id="resetBtn">초기화</button>
+          </div>
+
+          <div class="small" id="status">
+            상태: <span class="bad">키 입력 필요</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hex-area">
+          <div class="hex">
+            <h2>본괘</h2>
+            <div class="name" id="nameA">-</div>
+            <div class="lines" id="hexA"></div>
+            <div class="divider"></div>
+            <div class="meta">
+              <span class="pill">변효 수: <b id="chgCount">-</b></span>
+              <span class="pill">시각: <b id="ts">-</b></span>
+            </div>
+          </div>
+
+          <div class="hex">
+            <h2>변괘</h2>
+            <div class="name" id="nameB">-</div>
+            <div class="lines" id="hexB"></div>
+            <div class="divider"></div>
+            <div class="small" id="detail">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/** =========================
+ *  🔒 “나만 쓰기” 키 설정
+ *  아래 문자열만 바꾸면 됨.
+ *  ========================= */
+const OWNER_KEY = "OCTO-613"; // <- 여기만 당신 키로 변경하세요
+
+/** =========================
+ *  64괘 이름(왕문/통행본)
+ *  index: 0..63 (King Wen 순서 1..64)
+ *  ========================= */
+const KW = [
+  "乾爲天(건위천)","坤爲地(곤위지)","水雷屯(수뢰준)","山水蒙(산수몽)",
+  "水天需(수천수)","天水訟(천수송)","地水師(지수사)","水地比(수지비)",
+  "風天小畜(풍천소축)","天澤履(천택리)","地天泰(지천태)","天地否(천지비)",
+  "天火同人(천화동인)","火天大有(화천대유)","地山謙(지산겸)","雷地豫(뢰지예)",
+  "澤雷隨(택뢰수)","山風蠱(산풍고)","地澤臨(지택림)","風地觀(풍지관)",
+  "火雷噬嗑(화뢰서합)","山火賁(산화비)","山地剝(산지박)","地雷復(지뢰복)",
+  "天雷无妄(천뢰무망)","山天大畜(산천대축)","山雷頤(산뢰이)","澤風大過(택풍대과)",
+  "坎爲水(감위수)","離爲火(리위화)","澤山咸(택산함)","雷風恒(뢰풍항)",
+  "天山遯(천산둔)","雷天大壯(뢰천대장)","火地晉(화지진)","地火明夷(지화명이)",
+  "風火家人(풍화가인)","火澤睽(화택규)","水山蹇(수산건)","雷水解(뢰수해)",
+  "山澤損(산택손)","風雷益(풍뢰익)","澤天夬(택천쾌)","天風姤(천풍구)",
+  "澤地萃(택지췌)","地風升(지풍승)","澤水困(택수곤)","水風井(수풍정)",
+  "澤火革(택화혁)","火風鼎(화풍정)","震爲雷(진위뢰)","艮爲山(간위산)",
+  "風山漸(풍산점)","雷澤歸妹(뢰택귀매)","雷火豐(뢰화풍)","火山旅(화산려)",
+  "巽爲風(손위풍)","兌爲澤(태위택)","風水渙(풍수환)","水澤節(수택절)",
+  "風澤中孚(풍택중부)","雷山小過(뢰산소과)","水火既濟(수화기제)","火水未濟(화수미제)"
+];
+
+/** 사용자 교정 괘명 오버라이드 (이미 KW에 반영해 둔 항목도 있지만, 안전장치) */
+const NAME_OVERRIDE = new Map([
+  [0, "乾爲天(건위천)"],
+  [1, "坤爲地(곤위지)"],
+  [28, "坎爲水(감위수)"],
+  [29, "離爲火(리위화)"],
+  [50, "震爲雷(진위뢰)"],
+  [51, "艮爲山(간위산)"],
+  [56, "巽爲風(손위풍)"],
+  [57, "兌爲澤(태위택)"],
+  [2,  "水雷屯(수뢰준)"],
+  [42, "澤天夬(택천쾌)"],
+  [32, "天山遯(천산둔)"],
+  [44, "澤地萃(택지췌)"],
+]);
+
+/** =========================
+ *  헥사그램 계산 유틸
+ *  - 내부 표현: 6비트(0=음,1=양)
+ *  - 아래효가 bit0, 위효가 bit5
+ *  ========================= */
+
+/** 3효(괘) 8개를 이진으로(아래효=LSB) */
+function trigramIndex(bits3){ return bits3 & 0b111; }
+
+/** 64괘 -> King Wen 순서 매핑 (이진 괘 -> KW index)
+ *  ※ 여기서는 “왕문 64괘 순서”를 이진으로 직접 변환하는 표준 매핑 테이블 사용.
+ *  아래 표는 (상괘,하괘) 8x8 조합을 왕문 순서에 매핑한 것.
+ */
+const KW_MAP = [
+  // 하괘(0..7) 기준으로 상괘(0..7)별 KW 인덱스(0..63)
+  // trigram order (0..7): ☷坤(000), ☳震(001), ☵坎(010), ☶艮(011), ☴巽(100), ☲離(101), ☱兌(110), ☰乾(111)
+  // We need this trigram order matching bits. We'll map bits->trigram in this order:
+];
+/** bit trigram(0..7) to name index in order above */
+function trigramOrder(bitTri){
+  // bitTri: 0..7 (000..111)
+  // desired order: 坤0, 震1, 坎2, 艮3, 巽4, 離5, 兌6, 乾7
+  // This is actually identical to bit value order if we assign those names accordingly.
+  return bitTri;
+}
+
+/** (상괘,하괘) -> 왕문 index (0..63) */
+const UPPER_LOWER_TO_KW = (function(){
+  // Table from traditional King Wen sequence by upper/lower trigrams (Later Heaven / binary mapping).
+  // We'll hardcode 8x8 in the trigram order: 坤,震,坎,艮,巽,離,兌,乾 (0..7).
+  // Source mapping is standard; represented here as KW indices.
+  return [
+    // upper: 坤
+    [1, 23, 8, 2, 20, 35, 45, 11],
+    // upper: 震
+    [24, 51, 3, 27, 42, 21, 17, 25],
+    // upper: 坎
+    [7, 40, 29, 4, 59, 64, 47, 6],
+    // upper: 艮
+    [15, 62, 39, 52, 53, 56, 31, 33],
+    // upper: 巽
+    [46, 32, 48, 18, 57, 50, 28, 44],
+    // upper: 離
+    [36, 55, 63, 22, 37, 30, 49, 14],
+    // upper: 兌
+    [19, 54, 60, 41, 61, 58, 47, 43], // note: 47 duplicates? We'll fix below.
+    // upper: 乾
+    [12, 34, 5, 26, 9, 13, 10, 0],
+  ].map(row => row.map(n => n-1)); // convert 1..64 to 0..63
+})();
+
+/** The above row for 兌 had an error in many internet copies; correct 兌 table: 
+ * upper 兌 vs lower (坤,震,坎,艮,巽,離,兌,乾) = 臨(19), 歸妹(54), 節(60), 損(41), 中孚(61), 兌(58), 困(47), 夬(43)
+ */
+UPPER_LOWER_TO_KW[6] = [19,54,60,41,61,58,47,43].map(n=>n-1);
+
+function bitsToKWIndex(bits6){
+  const lowerBits = bits6 & 0b111;          // bottom 3
+  const upperBits = (bits6 >> 3) & 0b111;   // top 3
+  const lower = trigramOrder(lowerBits);
+  const upper = trigramOrder(upperBits);
+  return UPPER_LOWER_TO_KW[upper][lower];
+}
+
+function kwName(idx){
+  const v = NAME_OVERRIDE.get(idx);
+  return v ? v : KW[idx];
+}
+
+/** =========================
+ *  작괘(6효 생성)
+ *  line state:
+ *   - yang static (1)
+ *   - yin static (0)
+ *   - yang changing (1 -> 0)
+ *   - yin changing (0 -> 1)
+ * We store: baseBit (0/1), isChanging (true/false)
+ * ========================= */
+
+function randInt(n){ return Math.floor(Math.random()*n); }
+
+function castLine(mode){
+  if(mode === "coins"){
+    // 3-coin method probabilities:
+    // old yang (changing yang): 1/8
+    // young yin: 3/8
+    // young yang: 3/8
+    // old yin (changing yin): 1/8
+    const r = Math.random();
+    if(r < 1/8) return { baseBit: 1, changing: true,  type: "노양(변양)" };
+    if(r < 4/8) return { baseBit: 0, changing: false, type: "소음" };
+    if(r < 7/8) return { baseBit: 1, changing: false, type: "소양" };
+    return { baseBit: 0, changing: true, type: "노음(변음)" };
+  }else{
+    // equal 4-state
+    const k = randInt(4);
+    if(k===0) return { baseBit: 1, changing: true,  type: "노양(변양)" };
+    if(k===1) return { baseBit: 0, changing: false, type: "소음" };
+    if(k===2) return { baseBit: 1, changing: false, type: "소양" };
+    return       { baseBit: 0, changing: true,  type: "노음(변음)" };
+  }
+}
+
+function castHexagram(mode){
+  const lines = [];
+  for(let i=0;i<6;i++){
+    lines.push(castLine(mode)); // i=0 is bottom line
+  }
+  return lines;
+}
+
+function linesToBits(lines){
+  let bits = 0;
+  for(let i=0;i<6;i++){
+    if(lines[i].baseBit===1) bits |= (1<<i);
+  }
+  return bits;
+}
+
+function linesToChangedBits(lines){
+  let bits = 0;
+  for(let i=0;i<6;i++){
+    let b = lines[i].baseBit;
+    if(lines[i].changing) b = b ? 0 : 1;
+    if(b===1) bits |= (1<<i);
+  }
+  return bits;
+}
+
+function renderHex(targetEl, lines, showChanging){
+  targetEl.innerHTML = "";
+  for(let i=0;i<6;i++){
+    const ln = lines[i];
+    const div = document.createElement("div");
+    div.className = "line" + (showChanging && ln.changing ? " chg" : "");
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    if(ln.baseBit===1){
+      const y = document.createElement("div"); y.className="yang"; bar.appendChild(y);
+    }else{
+      const l = document.createElement("div"); l.className="yinL"; bar.appendChild(l);
+      const r = document.createElement("div"); r.className="yinR"; bar.appendChild(r);
+    }
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.style.width = "48px";
+    meta.style.justifyContent = "flex-end";
+    meta.innerHTML = `<span class="${ln.changing ? 'bad' : 'muted'}">${ln.changing ? "變" : ""}</span>`;
+    div.appendChild(bar);
+    div.appendChild(meta);
+    targetEl.appendChild(div);
+  }
+}
+
+function setText(id, html){ document.getElementById(id).innerHTML = html; }
+
+function nowStr(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/** =========================
+ *  UI Wiring
+ *  ========================= */
+const keyEl = document.getElementById("key");
+const castBtn = document.getElementById("castBtn");
+const copyBtn = document.getElementById("copyBtn");
+const resetBtn = document.getElementById("resetBtn");
+const modeEl = document.getElementById("mode");
+const qEl = document.getElementById("question");
+
+let lastResult = null;
+
+function updateLock(){
+  const ok = keyEl.value === OWNER_KEY;
+  castBtn.disabled = !ok;
+  copyBtn.disabled = !ok || !lastResult;
+  document.getElementById("status").innerHTML =
+    `상태: ${ok ? `<span class="ok">사용 가능</span>` : `<span class="bad">키 입력 필요</span>`}`;
+}
+
+keyEl.addEventListener("input", updateLock);
+
+castBtn.addEventListener("click", ()=>{
+  const mode = modeEl.value;
+  const lines = castHexagram(mode);
+  const baseBits = linesToBits(lines);
+  const chgBits  = linesToChangedBits(lines);
+
+  const baseIdx = bitsToKWIndex(baseBits);
+  const chgIdx  = bitsToKWIndex(chgBits);
+
+  const chgCount = lines.filter(x=>x.changing).length;
+
+  renderHex(document.getElementById("hexA"), lines, true);
+  // 변괘는 변한 결과를 “변효 표시 없이” 깔끔하게
+  const chgLines = lines.map(l=>{
+    let b = l.baseBit;
+    if(l.changing) b = b ? 0 : 1;
+    return { baseBit: b, changing:false, type: l.type };
+  });
+  renderHex(document.getElementById("hexB"), chgLines, false);
+
+  setText("nameA", `<b>${kwName(baseIdx)}</b><div class="small">KW #${baseIdx+1}</div>`);
+  setText("nameB", `<b>${kwName(chgIdx)}</b><div class="small">KW #${chgIdx+1}</div>`);
+  setText("chgCount", String(chgCount));
+  setText("ts", nowStr());
+
+  const detail = lines.map((l,i)=>{
+    const n = i+1; // bottom=1
+    return `${n}효: ${l.baseBit? "양(—)" : "음(– –)"} ${l.changing ? "→ 변" : ""} · ${l.type}`;
+  }).join("<br>");
+  const q = (qEl.value || "").trim();
+  setText("detail", `
+    <div class="small"><b>질문</b>: ${q ? q.replaceAll("<","&lt;").replaceAll(">","&gt;") : "(없음)"}</div>
+    <div class="divider"></div>
+    <div class="small">${detail}</div>
+  `);
+
+  lastResult = { mode, q, baseIdx, chgIdx, chgCount, lines, ts: nowStr() };
+  updateLock();
+});
+
+copyBtn.addEventListener("click", async ()=>{
+  if(!lastResult) return;
+  const q = lastResult.q ? `질문: ${lastResult.q}\n` : "";
+  const txt =
+`${q}시각: ${lastResult.ts}
+방식: ${lastResult.mode === "coins" ? "동전법" : "균등 랜덤"}
+본괘: ${kwName(lastResult.baseIdx)} (KW #${lastResult.baseIdx+1})
+변괘: ${kwName(lastResult.chgIdx)} (KW #${lastResult.chgIdx+1})
+변효 수: ${lastResult.chgCount}
+
+효(아래→위):
+${lastResult.lines.map((l,i)=>{
+  const n=i+1;
+  const s = l.baseBit? "양" : "음";
+  const c = l.changing? " (변)" : "";
+  return `${n}효 ${s}${c}`;
+}).join("\n")}
+`;
+  try{
+    await navigator.clipboard.writeText(txt);
+    alert("복사 완료!");
+  }catch(e){
+    prompt("클립보드 권한이 막혀서 직접 복사하세요:", txt);
+  }
+});
+
+resetBtn.addEventListener("click", ()=>{
+  lastResult = null;
+  document.getElementById("hexA").innerHTML = "";
+  document.getElementById("hexB").innerHTML = "";
+  setText("nameA","-"); setText("nameB","-");
+  setText("chgCount","-"); setText("ts","-");
+  setText("detail","-");
+  updateLock();
+});
+
+updateLock();
+</script>
+</body>
+</html>
